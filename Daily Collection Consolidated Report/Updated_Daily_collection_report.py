@@ -29,7 +29,9 @@ def get_latest_file(pattern):
     if not files:
         print(f"No files found for pattern: {pattern}")
         return None
-    return max(files, key=os.path.getctime)
+    latest_file =  max(files, key=os.path.getctime)
+    print(f" 🔍 Using input file: {os.path.basename(latest_file)}")
+    return latest_file
 
 
 def clean_and_convert(df, columns, target_type):

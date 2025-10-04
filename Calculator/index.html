@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settlement Offer Calculator — Single File</title>
+  <style>
+    :root{--radius:16px;--space:16px;--font:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);background:#0e1220;color:#e7eaf2;display:flex;min-height:100vh}
+    .wrap{max-width:980px;margin:auto;padding:clamp(16px,4vw,32px);width:100%}
+    .card{background:#151a2f;border:1px solid #273057;border-radius:var(--radius);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    header{padding:22px 24px;border-bottom:1px solid #273057;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    header h1{font-size:20px;margin:0}
+    header .actions{display:flex;gap:10px;flex-wrap:wrap}
+    a.action, button.action{font-size:12px;color:#b9c8ff;text-decoration:none;background:#202954;border:1px solid #2e3a6e;border-radius:10px;padding:8px 10px;cursor:pointer}
+    a.action:hover, button.action:hover{filter:brightness(1.1)}
+    .grid{display:grid;gap:var(--space);grid-template-columns:repeat(auto-fit,minmax(260px,1fr));padding:20px 24px}
+    label{font-size:13px;color:#bac2da;margin-bottom:6px;display:block}
+    input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #273057;background:#0e142e;color:#e7eaf2}
+    input:focus{outline:2px solid #4b61ff;border-color:#4b61ff}
+    .footer{padding:16px 24px;border-top:1px solid #273057;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button.primary{appearance:none;border:0;background:#4b61ff;color:white;padding:12px 16px;border-radius:12px;font-weight:600;cursor:pointer}
+    button.secondary{appearance:none;border:0;background:#243064;color:#c9d2ff;padding:12px 14px;border-radius:12px;cursor:pointer}
+    .note{color:#9aa3b2;font-size:12px}
+    .table{padding:8px 24px 24px}
+    table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    thead th{font-size:12px;color:#aab3c9;font-weight:600;text-align:left;padding:0 14px}
+    tbody td{background:#0f1430;border:1px solid #273057;border-left:0;border-right:0;padding:12px 14px}
+    tbody tr{border-radius:12px;overflow:hidden}
+    tbody td:first-child{border-left:1px solid #273057;border-top-left-radius:12px;border-bottom-left-radius:12px}
+    tbody td:last-child{border-right:1px solid #273057;border-top-right-radius:12px;border-bottom-right-radius:12px}
+    .kpi{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px 16px;background:#0e142e;border:1px solid #273057;border-radius:12px;margin:0 24px 18px}
+    .k-label{color:#aab3c9}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <h1>Settlement Offer Calculator</h1>
+        <div class="actions">
+          <button class="action" id="downloadCsv">Download CSV</button>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div>
+          <label for="outstanding">Outstanding Amount (₹)[Outstanding Amount =Principal+Interest]</label>
+          <input id="outstanding" type="number" inputmode="decimal" placeholder="32000" value="32000" />
+        </div>
+      </div>
+
+      <div>Instalment = Outstanding ÷ (Paid Parts + 1). Total Collection = Instalment × Paid Parts. Discount = Instalment.</div></div>
+
+      <div class="table">
+        <table id="resultTable" aria-describedby="table-desc">
+          <thead>
+            <tr>
+              <th>Outstanding (₹)</th>
+              <th>Offer</th>
+              <th>Instalment (₹)</th>
+              <th>Total Collection (₹)</th>
+              <th>Discount (₹)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <button class="primary" id="recalc">Recalculate</button>
+        <button class="secondary" id="reset">Reset</button>
+        
+      </div>
+    </div>
+  </div>
+
+  <script>
+const OFFERS = [3,4,6,8,10,12];
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const ceilStep = (x, step = 10) => Math.ceil(Number(x) / step) * step;
+
+function computeRows(outstanding){
+  const O = Number(outstanding || 0);
+  return OFFERS.map(paid => {
+    const parts = paid + 1;
+    const instalment = ceilStep(O / parts, 10); // round up to nearest 10
+    const totalCollection = instalment * paid;
+    const discount = instalment; // free part
+    return { O, offer: `${paid}+1`, instalment, totalCollection, discount };
+  });
+}
+
+function render(){
+  const O = Number($("outstanding").value || 0);
+  const rows = computeRows(O);
+  const tbody = $("resultTable").querySelector('tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>₹ ${fmt(r.O)}</td>
+      <td>${r.offer}</td>
+      <td>₹ ${fmt(r.instalment)}</td>
+      <td>₹ ${fmt(r.totalCollection)}</td>
+      <td>₹ ${fmt(r.discount)}</td>
+    </tr>
+  `).join('');
+}
+
+function downloadCSV(){
+  const O = Number($("outstanding").value || 0);
+  const rows = computeRows(O);
+  const head = ['Outstanding','Offer','Instalment','Total Collection','Discount'];
+  const body = rows.map(r => [r.O, r.offer, r.instalment.toFixed(2), r.totalCollection.toFixed(2), r.discount.toFixed(2)]);
+  const csv = [head, ...body].map(arr => arr.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'settlement_offers.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+$("recalc").addEventListener('click', render);
+$("outstanding").addEventListener('input', render);
+$("reset").addEventListener('click', () => { $("outstanding").value = ''; render(); });
+$("downloadCsv").addEventListener('click', downloadCSV);
+
+render();
+</script>
+</body>
+</html>
